@@ -145,13 +145,13 @@
 			</div>
 			<div id="content">');
 	
-			if (file_exists($txt_path.$id.'.txt')) {
+			/*if (file_exists($txt_path.$id.'.txt')) {
 				$txt_file = fopen($txt_path.$id.'.txt', 'r');
 				flock($txt_file, 1);
 				$replay = unserialize(fgets($txt_file));
 				flock($txt_file, 3);
 				fclose($txt_file);
-			} elseif ($id) {
+			} else*/ if ($id) {
 				$replay = new replay($w3g_path.$id.'.w3g');
 			} elseif (is_uploaded_file($_FILES['replay_file']['tmp_name'])) {
 				$replay = new replay($_FILES['replay_file']['tmp_name']);
@@ -409,6 +409,63 @@
 					}
 					echo('</p>');
 				}
+				
+				// process the action data
+				$player_ids = array(); $player_names = array();
+				foreach ($replay->teams as $team => $players) {
+					if ($team != 12) {
+						foreach ($players as $player_id => $player) {
+							$player_ids[$player_id] = 0;
+							$player_names[] = '<b>' . $player['name'] . '</b><br />' . round($player['apm']) . ' APM';
+						}
+					}
+				}
+				
+				$timespan = 5; // seconds
+				$tmp = array();
+				
+				foreach ($replay->teams as $team => $players) {
+					if ($team != 12) {
+						foreach ($players as $player_id => $player) {
+							foreach ($player['actions'] as $time) {
+								$time = floor($time / (1000 * $timespan)) * $timespan;
+								
+								if (!isset($tmp[$time])) {
+									$tmp[$time] = $player_ids; // array of zeroes
+								}
+								
+								$tmp[$time][$player_id]++;
+							}
+						}
+					}
+				}
+				
+				ksort($tmp);
+				
+				$width = round(10 * 100 / (1 + sizeof($player_names))) / 10;
+				$clr = '222233';
+				
+				echo('<h2>Player actions</h2>
+				<p><table width="100%"><tr><td align=center bgcolor=' . $clr . ' width="' . $width . '%"><b>Time (s)</b></td>');
+				
+				foreach ($player_names as $player_name) {
+					echo('<td align=center bgcolor=' . $clr . ' width="' . $width . '%" align=center>' . $player_name . '</td>');
+				}
+				echo('</tr>' . "\n");
+				
+				$counter = 0;
+				foreach ($tmp as $time => $action_counts) {
+					$tdParams = ' align=center' . (((++$counter % 10) == 0) ? (' bgcolor=' . $clr) : '');
+					
+					echo('<tr><td align=center' . $tdParams . '>' . $time . '</td>');
+					
+					foreach ($action_counts as $action_count) {
+						echo('<td' . $tdParams . '>' . $action_count . '</td>');
+					}
+					
+					echo('</tr>' . "\n");
+				}
+				echo('</table></p>');
 			}
 			echo('</div>');
 		}

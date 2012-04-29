@@ -31,6 +31,8 @@ class replay {
 	var $fp, $data, $leave_unknown, $continue_game, $referees, $time, $pause, $leaves, $errors, $header, $game,  $players, $teams, $chat, $filename, $parse_actions, $parse_chat;
 	var $max_datablock = MAX_DATABLOCK;
 	
+	var $actions;
+	
 	function replay($filename, $parse_actions=true, $parse_chat=true) {
 		$this->parse_actions = $parse_actions;
 		$this->parse_chat = $parse_chat;
@@ -40,11 +42,16 @@ class replay {
 			exit($this->filename.': Can\'t read replay file');
 		}
 		flock($this->fp, 1);
-	
+		
 		$this->parseheader();
 		$this->parsedata();
 		$this->cleanup();
-	
+		
+		// store the full action data
+		foreach ($this->players as $player_id => $data) {
+			$this->players[$player_id]['actions'] = $data['actions'];
+		}
+		
 		flock($this->fp, 3);
 		fclose($this->fp);
 		unset($this->fp);
@@ -143,7 +150,7 @@ class replay {
 			$this->players[$player_id]['race'] = convert_race($temp['race']);
 		}
 		if ($this->parse_actions) {
-			$this->players[$player_id]['actions'] = 0;
+			$this->players[$player_id]['actions'] = array();
 		}
 		if (!$this->header['build_v']) { // calculating team for tournament replays from battle.net website
 			$this->players[$player_id]['team'] = ($player_id-1)%2;
@@ -418,7 +425,7 @@ class replay {
 					// here we detect the races, heroes, units, items, buildings,
 					// upgrades
 					case 0x10:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						if ($this->header['major_v'] >= 13) {
 							$n++; // ability flag is one byte longer
 						}
@@ -526,7 +533,7 @@ class replay {
 	
 					// Unit/building ability (with target position)
 					case 0x11:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						if ($this->header['major_v'] >= 13) {
 							$n++; // ability flag
 						}
@@ -549,7 +556,7 @@ class replay {
 	
 					// Unit/building ability (with target position and target object ID)
 					case 0x12:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						if ($this->header['major_v'] >= 13) {
 							$n++; // ability flag
 						}
@@ -569,7 +576,7 @@ class replay {
 	
 					// Give item to Unit / Drop item on ground
 					case 0x13:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						if ($this->header['major_v'] >= 13) {
 							$n++; // ability flag
 						}
@@ -583,7 +590,7 @@ class replay {
 	
 					// Unit/building ability (with two target positions and two item IDs)
 					case 0x14:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						if ($this->header['major_v'] >= 13) {
 							$n++; // ability flag
 						}
@@ -605,7 +612,7 @@ class replay {
 					case 0x16:
 						$temp = unpack('Cmode/vnum', substr($actionblock, $n+1, 3));
 						if ($temp['mode'] == 0x02 || !$was_deselect) {
-							$this->players[$player_id]['actions']++;
+							$this->players[$player_id]['actions'][] = $this->time;
 							$this->players[$player_id]['actions_details'][convert_action('select')]++;
 						}
 						$was_deselect = ($temp['mode'] == 0x02);
@@ -616,7 +623,7 @@ class replay {
 	
 					// Assign Group Hotkey
 					case 0x17:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						$this->players[$player_id]['actions_details'][convert_action('assignhotkey')]++;
 						$temp = unpack('Cgroup/vnum', substr($actionblock, $n+1, 3));
 						$this->players[$player_id]['hotkeys'][$temp['group']]['assigned']++;
@@ -627,7 +634,7 @@ class replay {
 	
 					// Select Group Hotkey
 					case 0x18:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						$this->players[$player_id]['actions_details'][convert_action('selecthotkey')]++;
 						$this->players[$player_id]['hotkeys'][ord($actionblock{$n+1})]['used']++;
 	
@@ -640,7 +647,7 @@ class replay {
 						// OR is for torunament reps which don't have build_v
 						if ($this->header['build_v'] >= 6040 || $this->header['major_v'] > 14) {
 							if ($was_subgroup) { // can't think of anything better (check action 0x1A)
-								$this->players[$player_id]['actions']++;
+								$this->players[$player_id]['actions'][] = $this->time;
 								$this->players[$player_id]['actions_details'][convert_action('subgroup')]++;
 								
 								// I don't have any better idea what to do when somebody binds buildings
@@ -651,7 +658,7 @@ class replay {
 							$n+=13;
 						} else {
 							if (ord($actionblock{$n+1}) != 0 && ord($actionblock{$n+1}) != 0xFF && !$was_subupdate) {
-								$this->players[$player_id]['actions']++;
+								$this->players[$player_id]['actions'][] = $this->time;
 								$this->players[$player_id]['actions_details'][convert_action('subgroup')]++;
 							}
 							$was_subupdate = (ord($actionblock{$n+1}) == 0xFF);
@@ -678,7 +685,7 @@ class replay {
 						if ($this->header['build_v'] >= 6040 || $this->header['major_v'] > 14) {
 							$n+=10;
 						} else {
-							$this->players[$player_id]['actions']++;
+							$this->players[$player_id]['actions'][] = $this->time;
 							$n+=10;
 						}
 						break;
@@ -688,10 +695,10 @@ class replay {
 					case 0x1C:
 						// OR is for torunament reps which don't have build_v
 						if ($this->header['build_v'] >= 6040 || $this->header['major_v'] > 14) {
-							$this->players[$player_id]['actions']++;
+							$this->players[$player_id]['actions'][] = $this->time;
 							$n+=10;
 						} else {
-							$this->players[$player_id]['actions']++;
+							$this->players[$player_id]['actions'][] = $this->time;
 							$n+=9;
 						}
 						break;
@@ -702,10 +709,10 @@ class replay {
 					case 0x1E:
 						// OR is for torunament reps which don't have build_v
 						if (($this->header['build_v'] >= 6040 || $this->header['major_v'] > 14) && $action != 0x1E) {
-							$this->players[$player_id]['actions']++;
+							$this->players[$player_id]['actions'][] = $this->time;
 							$n+=9;
 						} else {
-							$this->players[$player_id]['actions']++;
+							$this->players[$player_id]['actions'][] = $this->time;
 							$this->players[$player_id]['actions_details'][convert_action('removeunit')]++;
 							$value = convert_itemid(strrev(substr($actionblock, $n+2, 4)));
 							$name = substr($value, 2);
@@ -764,7 +771,7 @@ class replay {
 	
 					// ESC pressed
 					case 0x61:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						$this->players[$player_id]['actions_details'][convert_action('esc')]++;
 						++$n;
 						break;
@@ -780,7 +787,7 @@ class replay {
 	
 					// Enter select hero skill submenu for WarCraft III patch version <= 1.06
 					case 0x65:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						$this->players[$player_id]['actions_details'][convert_action('heromenu')]++;
 						++$n;
 						break;
@@ -788,7 +795,7 @@ class replay {
 					// Enter select hero skill submenu
 					// Enter select building submenu for WarCraft III patch version <= 1.06
 					case 0x66:
-						$this->players[$player_id]['actions']++;
+						$this->players[$player_id]['actions'][] = $this->time;
 						if ($this->header['major_v'] >= 7) {
 							$this->players[$player_id]['actions_details'][convert_action('heromenu')]++;
 						} else {
@@ -801,7 +808,7 @@ class replay {
 					// Minimap signal (ping) for WarCraft III patch version <= 1.06
 					case 0x67:
 						if ($this->header['major_v'] >= 7) {
-							$this->players[$player_id]['actions']++;
+							$this->players[$player_id]['actions'][] = $this->time;
 							$this->players[$player_id]['actions_details'][convert_action('buildmenu')]++;
 							$n+=1;
 						} else {
@@ -919,7 +926,7 @@ class replay {
 			foreach ($this->players as $player_id=>$info) {
 				// whole team 12 are observers/referees
 				if ($this->players[$player_id]['team'] != 12 && $this->players[$player_id]['computer'] == 0) {
-					$this->players[$player_id]['apm'] = $this->players[$player_id]['actions'] / $this->players[$player_id]['time'] * 60000;
+					$this->players[$player_id]['apm'] = sizeof($this->players[$player_id]['actions']) / $this->players[$player_id]['time'] * 60000;
 				}
 			}
 		}
