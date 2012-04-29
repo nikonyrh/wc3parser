@@ -47,11 +47,6 @@ class replay {
 		$this->parsedata();
 		$this->cleanup();
 		
-		// store the full action data
-		foreach ($this->players as $player_id => $data) {
-			$this->players[$player_id]['actions'] = $data['actions'];
-		}
-		
 		flock($this->fp, 3);
 		fclose($this->fp);
 		unset($this->fp);

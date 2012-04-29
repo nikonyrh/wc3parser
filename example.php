@@ -421,7 +421,7 @@
 					}
 				}
 				
-				$timespan = 5; // seconds
+				$timespan = 5; // timespan in seconds, for actions summarizing
 				$tmp = array();
 				
 				foreach ($replay->teams as $team => $players) {
@@ -442,7 +442,7 @@
 				
 				ksort($tmp);
 				
-				$width = round(10 * 100 / (1 + sizeof($player_names))) / 10;
+				$width = round(10 * 100 / (1 + sizeof($player_names))) / 10; // must add 1 to account for the time column
 				$clr = '222233';
 				
 				echo('<h2>Player actions</h2>
@@ -455,7 +455,10 @@
 				
 				$counter = 0;
 				foreach ($tmp as $time => $action_counts) {
-					$tdParams = ' align=center' . (((++$counter % 10) == 0) ? (' bgcolor=' . $clr) : '');
+					$counter++;
+					
+					// add a light background to every 10th row
+					$tdParams = ' align=center' . ($counter > 1 && (($counter % 10) == 1) ? (' bgcolor=' . $clr) : '');
 					
 					echo('<tr><td align=center' . $tdParams . '>' . $time . '</td>');
 					
