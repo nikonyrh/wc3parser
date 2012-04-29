@@ -144,14 +144,14 @@
 			<a href="?id='.urlencode($replays[$pos+1]).'">next &#187;</a>
 			</div>
 			<div id="content">');
-	
-			/*if (file_exists($txt_path.$id.'.txt')) {
+			
+			if (file_exists($txt_path.$id.'.txt')) {
 				$txt_file = fopen($txt_path.$id.'.txt', 'r');
 				flock($txt_file, 1);
 				$replay = unserialize(fgets($txt_file));
 				flock($txt_file, 3);
 				fclose($txt_file);
-			} else*/ if ($id) {
+			} else if ($id) {
 				$replay = new replay($w3g_path.$id.'.w3g');
 			} elseif (is_uploaded_file($_FILES['replay_file']['tmp_name'])) {
 				$replay = new replay($_FILES['replay_file']['tmp_name']);
@@ -276,7 +276,7 @@
 										echo('<tr><td style="text-align: right;">'.$name.'</td><td style="text-align: right;"><b>'.$info.'</b></td><td><div class="graph" style="width: '.round($info/10).'px;"></div></td></tr>');
 									}
 									echo('</table>
-									<b>'.$player['actions'].'</b> total</div>');
+									<b>'.sizeof($player['actions']).'</b> total</div>');
 								}
 								
 								if (isset($player['hotkeys'])) {
