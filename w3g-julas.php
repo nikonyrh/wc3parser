@@ -629,7 +629,7 @@ class replay {
 	
 					// Select Group Hotkey
 					case 0x18:
-						$this->players[$player_id]['actions'][] = $this->time;
+						$this->players[$player_id]['actions'][] = $this->time; // Won't show up in APM stats, if we comment this line
 						$this->players[$player_id]['actions_details'][convert_action('selecthotkey')]++;
 						$this->players[$player_id]['hotkeys'][ord($actionblock{$n+1})]['used']++;
 	

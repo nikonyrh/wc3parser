@@ -1,4 +1,35 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<?php
+function median() { // http://www.php.net/manual/en/ref.math.php#55173
+    $args = func_get_args();
+	
+    switch(func_num_args())
+    {
+        case 0:
+            trigger_error('median() requires at least one parameter',E_USER_WARNING);
+            return false;
+            break;
+        case 1:
+            $args = array_pop($args);
+            // fallthrough
+        default:
+            if(!is_array($args)) {
+                trigger_error('median() requires a list of numbers to operate on or an array of numbers',E_USER_NOTICE);
+                return false;
+            }
+            sort($args);
+            $n = count($args);
+            $h = intval($n / 2);
+            if($n % 2 == 0) {
+                $median = ($args[$h] + $args[$h-1]) / 2;
+            } else {
+                $median = $args[$h];
+            }
+            break;
+    }
+    return $median;
+}
+?>
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 	<head>
 		<!-- this charset is the best for replays because chat messages are encoded in it -->
@@ -416,12 +447,12 @@
 					if ($team != 12) {
 						foreach ($players as $player_id => $player) {
 							$player_ids[$player_id] = 0;
-							$player_names[] = '<b>' . $player['name'] . '</b><br />' . round($player['apm']) . ' APM';
+							$player_names[$player_id] = '<b>' . $player['name'] . '</b><br />' . round($player['apm']) . ' APM mean';
 						}
 					}
 				}
 				
-				$timespan = 5; // timespan in seconds, for actions summarizing
+				$timespan = 20; // timespan in seconds, for actions summarizing
 				$tmp = array();
 				
 				foreach ($replay->teams as $team => $players) {
@@ -442,14 +473,27 @@
 				
 				ksort($tmp);
 				
+				$playerApms = array();
+				foreach ($tmp as $time => $players) {
+					foreach ($players as $player_id => $apm) {
+						$playerApms[$player_id][] = $apm;
+					}
+				}
+				
+				foreach ($playerApms as $player_id => $apmArray) {
+					$playerApms[$player_id] = median($apmArray);
+				}
+				//die('<pre>'.print_r($playerApms,true).'</pre></html>');
+				
 				$width = round(10 * 100 / (1 + sizeof($player_names))) / 10; // must add 1 to account for the time column
 				$clr = '222233';
 				
 				echo('<h2>Player actions</h2>
 				<p><table width="100%"><tr><td align=center bgcolor=' . $clr . ' width="' . $width . '%"><b>Time (s)</b></td>');
 				
-				foreach ($player_names as $player_name) {
-					echo('<td align=center bgcolor=' . $clr . ' width="' . $width . '%" align=center>' . $player_name . '</td>');
+				foreach ($player_names as $player_id => $player_name) {
+					echo('<td align=center bgcolor=' . $clr . ' width="' . $width . '%" align=center>' .
+						$player_name . '<br />' . round(60 / $timespan * $playerApms[$player_id]) . ' APM median</td>');
 				}
 				echo('</tr>' . "\n");
 				
@@ -458,7 +502,7 @@
 					$counter++;
 					
 					// add a light background to every 10th row
-					$tdParams = ' align=center' . ($counter > 1 && (($counter % 10) == 1) ? (' bgcolor=' . $clr) : '');
+					$tdParams = ' align=center' . ($counter > 1 && (($counter % 3) == 1) ? (' bgcolor=' . $clr) : '');
 					
 					echo('<tr><td align=center' . $tdParams . '>' . $time . '</td>');
 					
