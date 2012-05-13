@@ -447,7 +447,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 					if ($team != 12) {
 						foreach ($players as $player_id => $player) {
 							$player_ids[$player_id] = 0;
-							$player_names[$player_id] = '<b>' . $player['name'] . '</b><br />' . round($player['apm']) . ' APM mean';
+							$player_names[$player_id] = '<b>' . $player['name'] . '</b><br />' . round($player['apm']) . '&nbsp;APM 1';
 						}
 					}
 				}
@@ -483,7 +483,23 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 				foreach ($playerApms as $player_id => $apmArray) {
 					$playerApms[$player_id] = median($apmArray);
 				}
-				//die('<pre>'.print_r($playerApms,true).'</pre></html>');
+				
+				$weightedApm = array_fill_keys(array_keys($playerApms), 0); // initialize with zeroes
+				$weightSum = 0;
+				foreach ($tmp as $time => $action_counts) {
+					$weights = $action_counts;
+					foreach ($action_counts as $player_id => $action_count) {
+						$weights[$player_id] = 1 / (1 + exp(0.5 * ($action_count - $playerApms[$player_id]) / $timespan));
+					}
+					$weight = median($weights);
+					$weightSum += $weight;
+					
+					foreach ($action_counts as $player_id => $action_count) {
+						$weightedApm[$player_id] += $weight * $action_count;
+					}
+				}
+				
+				//die('<pre>'.print_r($weightedApm,true).'</pre></html>');
 				
 				$width = round(10 * 100 / (1 + sizeof($player_names))) / 10; // must add 1 to account for the time column
 				$clr = '222233';
@@ -493,7 +509,9 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 				
 				foreach ($player_names as $player_id => $player_name) {
 					echo('<td align=center bgcolor=' . $clr . ' width="' . $width . '%" align=center>' .
-						$player_name . '<br />' . round(60 / $timespan * $playerApms[$player_id]) . ' APM median</td>');
+						$player_name . '<br />' .
+						round(60 / $timespan * $playerApms[$player_id]) . '&nbsp;APM 2<br />' .
+						round(60 / ($timespan * $weightSum) * $weightedApm[$player_id]) . '&nbsp;APM 3</td>');
 				}
 				echo('</tr>' . "\n");
 				
