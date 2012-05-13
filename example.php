@@ -511,6 +511,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 				$clr = '222233';
 				
 				echo('<h2>Player actions</h2>
+				<a href="javascript:display(\'actions\');">&#187; Show APM table</a><div id="actions" class="additional">
 				<p><table width="100%"><tr><td align=center bgcolor=' . $clr . ' width="' . $width . '%"><b>Time (s)</b></td>');
 				
 				$jsData = "\n['Time' ";
@@ -542,7 +543,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 						echo('<td' . $tdParams . '>' . $action_count . '</td>');
 						
 						$prevActionCount = isset($prevActions[$player_id]) ? $prevActions[$player_id] : $action_count;
-						$weight = ($prevActionCount < $action_count) ? 0.2 : 0.1;
+						$weight = ($prevActionCount < $action_count) ? 0.25 : 0.15;
 						$action_count = $weight * $action_count + (1 - $weight) * $prevActionCount;
 						$prevActions[$player_id] = $action_count;
 						$jsData .= ", " . round(60 / $timespan * $action_count, 1);
@@ -551,9 +552,9 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 					
 					echo('</tr>' . "\n");
 				}
-				echo('</table></p>');
+				echo('</table></p></div>&nbsp;<br />&nbsp;<br />');
 			}
-			echo('<div id="chart_div" style="width: 900; height: 500px; margin:10px;"></div></div>');
+			echo('<h2>APM charts</h2><div id="chart_div" style="width: 900; height: 500px; margin:10px;"></div></div>');
 		}
 		$time_end = microtime();
 		$temp = explode(' ', $time_start.' '.$time_end);
