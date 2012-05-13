@@ -495,7 +495,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 				foreach ($tmp as $time => $action_counts) {
 					$weights = $action_counts;
 					foreach ($action_counts as $player_id => $action_count) {
-						$weights[$player_id] = 1 / (1 + exp(0.5 * ($action_count - $playerApms[$player_id]) / $timespan));
+						$weights[$player_id] = 1 / (1 + exp(2 * ($action_count - $playerApms[$player_id]) / $timespan));
 					}
 					$weight = median($weights);
 					$weightSum += $weight;
@@ -528,16 +528,23 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 				$jsData .= "],\n";
 				
 				$counter = 0;
+				$prevActions = array();
 				foreach ($tmp as $time => $action_counts) {
 					$counter++;
 					
 					// add a light background to every 10th row
 					$tdParams = ' align=center' . ($counter > 1 && (($counter % 3) == 1) ? (' bgcolor=' . $clr) : '');
 					
-					$jsData .= "['" . str_pad(floor($time/60), 2, '0', STR_PAD_LEFT) . ':' . str_pad($time % 60, 2, '0', STR_PAD_LEFT) . "'";
+					//$jsData .= "['" . str_pad(floor($time/60), 2, '0', STR_PAD_LEFT) . ':' . str_pad($time % 60, 2, '0', STR_PAD_LEFT) . "'";
+					$jsData .= "[" . round($time/60, 2);
 					echo('<tr><td align=center' . $tdParams . '>' . $time . '</td>');
-					foreach ($action_counts as $action_count) {
+					foreach ($action_counts as $player_id => $action_count) {
 						echo('<td' . $tdParams . '>' . $action_count . '</td>');
+						
+						$prevActionCount = isset($prevActions[$player_id]) ? $prevActions[$player_id] : $action_count;
+						$weight = ($prevActionCount < $action_count) ? 0.2 : 0.1;
+						$action_count = $weight * $action_count + (1 - $weight) * $prevActionCount;
+						$prevActions[$player_id] = $action_count;
 						$jsData .= ", " . round(60 / $timespan * $action_count, 1);
 					}
 					$jsData .= "],\n";
@@ -564,7 +571,8 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 			
 			var options = {
 			  chartArea: {left:50,top:30,width:"80%",height:"80%"},
-			  fontSize: 12
+			  fontSize: 12,
+			  hAxis: { minValue: 0, maxValue: 24 }
 			};
 			
 			var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
