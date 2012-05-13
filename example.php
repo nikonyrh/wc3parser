@@ -276,7 +276,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 							}
 							if (!$player['computer']) {
 								echo(' | '.round($player['apm']).' APM | ');
-								echo($player['actions'].' actions | ');
+								echo(sizeof($player['actions']).' actions | ');
 								echo(convert_time($player['time']).')<br />
 								<div class="details">');
 								
@@ -571,7 +571,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 			]);
 			
 			var options = {
-			  chartArea: {left:50,top:30,width:"80%",height:"80%"},
+			  chartArea: {left:50,top:30,width:"80%",height:"85%"},
 			  fontSize: 12,
 			  hAxis: { minValue: 0, maxValue: 24 }
 			};
