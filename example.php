@@ -37,6 +37,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 		<link rel="stylesheet" type="text/css" href="style.css" media="screen, projection" />
 		<meta name="author" content="Juliusz 'Julas' Gonera" />
 		<title>Warcraft III Replay Parser for PHP</title>
+		
 		<script type="text/javascript">
 			<!--//--><![CDATA[//><!--
 			function display(id) {
@@ -50,14 +51,17 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 			}
 			//--><!]]>
 		</script>
+		
+		<!-- https://google-developers.appspot.com/chart/interactive/docs/gallery/linechart -->
+		<script type="text/javascript" src="https://www.google.com/jsapi"></script>
 	</head>
 	<body>
 		<?php
 		$time_start = microtime();
 		require('w3g-julas.php');
-	
+		
 		$id = $_GET['id'];
-	
+		
 		// path to the replay directory (*.w3g files) - must be ended with /
 		if (isset($_GET['w3g_path'])) {
 			$w3g_path = $_GET['w3g_path'];
@@ -68,7 +72,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 		$txt_path = './';
 		// only for links to webprofiles
 		$gateway = 'Northrend';
-	
+		
 		// listing replay files (we need it even when viewing details for
 		// prev/next links
 		if (false !== ($replays_dir = opendir($w3g_path))) {
@@ -98,7 +102,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 		} else {
 			echo('<p>Can\'t read replay folder!</p>');
 		}
-	
+		
 		// listing replays - short info
 		if (!isset($id) && !isset($_FILES['replay_file'])) {
 			echo('<div id="top"><h1>index of '.$w3g_path.'</h1></div>
@@ -443,11 +447,13 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 				
 				// process the action data
 				$player_ids = array(); $player_names = array();
+				$playerMeanApms = array(); // TODO: combine different APM calculations into a single N x 3 array
 				foreach ($replay->teams as $team => $players) {
 					if ($team != 12) {
 						foreach ($players as $player_id => $player) {
 							$player_ids[$player_id] = 0;
-							$player_names[$player_id] = '<b>' . $player['name'] . '</b><br />' . round($player['apm']) . '&nbsp;APM 1';
+							$playerMeanApms[$player_id] = round($player['apm']);
+							$player_names[$player_id] = $player['name'];
 						}
 					}
 				}
@@ -507,13 +513,19 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 				echo('<h2>Player actions</h2>
 				<p><table width="100%"><tr><td align=center bgcolor=' . $clr . ' width="' . $width . '%"><b>Time (s)</b></td>');
 				
+				$jsData = "\n['Time' ";
+				
 				foreach ($player_names as $player_id => $player_name) {
+					$jsData .= ", '" . str_replace(',', '', $player_name) . "'";
+					
 					echo('<td align=center bgcolor=' . $clr . ' width="' . $width . '%" align=center>' .
-						$player_name . '<br />' .
-						round(60 / $timespan * $playerApms[$player_id]) . '&nbsp;APM 2<br />' .
-						round(60 / ($timespan * $weightSum) * $weightedApm[$player_id]) . '&nbsp;APM 3</td>');
+						'<b>' . $player_name . '</b><br />' .
+						$playerMeanApms[$player_id] . '&nbsp;<a href="#" title="Mean APM">APM</a><br />' .
+						round(60 / $timespan * $playerApms[$player_id]) . '&nbsp;<a href="#" title="Median APM">APM</a><br />' .
+						round(60 / ($timespan * $weightSum) * $weightedApm[$player_id]) . '&nbsp;<a href="#" title="Weighted APM">APM</a></td>');
 				}
 				echo('</tr>' . "\n");
+				$jsData .= "],\n";
 				
 				$counter = 0;
 				foreach ($tmp as $time => $action_counts) {
@@ -522,22 +534,43 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 					// add a light background to every 10th row
 					$tdParams = ' align=center' . ($counter > 1 && (($counter % 3) == 1) ? (' bgcolor=' . $clr) : '');
 					
+					$jsData .= "['" . str_pad(floor($time/60), 2, '0', STR_PAD_LEFT) . ':' . str_pad($time % 60, 2, '0', STR_PAD_LEFT) . "'";
 					echo('<tr><td align=center' . $tdParams . '>' . $time . '</td>');
-					
 					foreach ($action_counts as $action_count) {
 						echo('<td' . $tdParams . '>' . $action_count . '</td>');
+						$jsData .= ", " . round(60 / $timespan * $action_count, 1);
 					}
+					$jsData .= "],\n";
 					
 					echo('</tr>' . "\n");
 				}
 				echo('</table></p>');
 			}
-			echo('</div>');
+			echo('<div id="chart_div" style="width: 900; height: 500px; margin:10px;"></div></div>');
 		}
 		$time_end = microtime();
 		$temp = explode(' ', $time_start.' '.$time_end);
 		$duration=sprintf('%.8f',($temp[2]+$temp[3])-($temp[0]+$temp[1]));
 		?>
+		
+		<script type="text/javascript">
+		  google.load("visualization", "1", {packages:["corechart"]});
+		  google.setOnLoadCallback(drawChart);
+		  
+		  function drawChart() { // TODO: Find a more suitable syntax than "arrayToDataTable"
+			var data = google.visualization.arrayToDataTable([
+			  <?php echo $jsData; ?>
+			]);
+			
+			var options = {
+			  chartArea: {left:50,top:30,width:"80%",height:"80%"},
+			  fontSize: 12
+			};
+			
+			var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+			chart.draw(data, options);
+		  }
+		</script>
 		<div id="footer">
 			<a href="http://w3rep.sourceforge.net/">Warcraft III Replay Parser for PHP</a>. Copyright &copy; 2003-2010 <a href="http://juliuszgonera.com/">Juliusz 'Julas' Gonera</a>.
 			All rights reserved.
