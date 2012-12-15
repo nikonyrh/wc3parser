@@ -1,5 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <?php
+error_reporting(E_ALL ^ E_NOTICE);
+
 function median() { // http://www.php.net/manual/en/ref.math.php#55173
     $args = func_get_args();
 	
@@ -60,13 +62,15 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 		$time_start = microtime();
 		require('w3g-julas.php');
 		
-		$id = $_GET['id'];
+		if (isset($_GET['id'])) {
+			$id = $_GET['id'];
+		}
 		
 		// path to the replay directory (*.w3g files) - must be ended with /
 		if (isset($_GET['w3g_path'])) {
 			$w3g_path = $_GET['w3g_path'];
 		} else {
-			$w3g_path = 'C:/Program Files/Warcraft III/replay/';
+			$w3g_path = 'C:/Program Files (x86)/Warcraft III/replay/';
 		}
 		// path to the data files, can be identical as w3g one or not
 		$txt_path = './';
@@ -81,13 +85,19 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 				if ($replay_file != '.' && $replay_file != '..' && false !== ($ext_pos = strpos($replay_file, '.w3g'))) {
 					$replay_file = substr($replay_file, 0, $ext_pos);
 					// create database file if replay is new
-					if (!file_exists($txt_path.$replay_file.'.txt') && $replay_file != 'LastReplay') { // LastReplay additions just for my own purposes
-						$replay = new replay($w3g_path.$replay_file.'.w3g');
-						$txt_file = fopen($txt_path.$replay_file.'.txt', 'a');
+					if (true) { // !file_exists($txt_path.$replay_file.'.txt') || $replay_file == 'LastReplay') { // LastReplay additions just for my own purposes
+						$replay = $w3g_path.$replay_file.'.w3g';
+						//$hash = md5(file_get_contents($replay)); echo "$replay = $hash<br/>\n";
+						
+						$replay = new replay($replay);
+						$txt_fname = $txt_path.$replay_file.'.txt';
+						$txt_file = fopen($txt_fname, 'wb');
 						flock($txt_file, 2);
 						fputs($txt_file, serialize($replay));
 						flock($txt_file, 3);
 						fclose($txt_file);
+						
+						//$hash = md5(file_get_contents($txt_path.$replay_file.'.txt')); echo "txt file = $hash<br/>\n";
 					}
 					$replays[$i] = $replay_file;
 					$i++;
@@ -127,7 +137,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 			<?php
 			foreach ($replays as $replay_file) {
 				if ($replay_file == 'LastReplay') { // LastReplay additions just for my own purposes
-					continue;
+					//continue;
 				}
 				echo('<li><a class="title" href="?id='.urlencode($replay_file).'">'.$replay_file.'</a>
 				<a class="download" href="'. $w3g_path.$replay_file.'.w3g">&#187; download</a>('.round(filesize($w3g_path.$replay_file.'.w3g')/1024).' KB)<br />');
