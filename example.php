@@ -1,3 +1,4 @@
+<?php ob_start(); ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <?php
 error_reporting(E_ALL ^ E_NOTICE);
@@ -85,7 +86,7 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 				if ($replay_file != '.' && $replay_file != '..' && false !== ($ext_pos = strpos($replay_file, '.w3g'))) {
 					$replay_file = substr($replay_file, 0, $ext_pos);
 					// create database file if replay is new
-					if (true) { // !file_exists($txt_path.$replay_file.'.txt') || $replay_file == 'LastReplay') { // LastReplay additions just for my own purposes
+					if (!file_exists($txt_path.$replay_file.'.txt') || $replay_file == 'LastReplay') { // LastReplay additions just for my own purposes
 						$replay = $w3g_path.$replay_file.'.w3g';
 						//$hash = md5(file_get_contents($replay)); echo "$replay = $hash<br/>\n";
 						
@@ -97,7 +98,8 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 						flock($txt_file, 3);
 						fclose($txt_file);
 						
-						//$hash = md5(file_get_contents($txt_path.$replay_file.'.txt')); echo "txt file = $hash<br/>\n";
+						$hash = md5(file_get_contents($txt_fname));
+						copy($txt_fname, 'history/' . $replay_file . '_' . $hash . '.txt');
 					}
 					$replays[$i] = $replay_file;
 					$i++;
@@ -599,3 +601,13 @@ function median() { // http://www.php.net/manual/en/ref.math.php#55173
 		</div>
 	</body>
 </html>
+
+<?php
+	if (isset($id)) {
+		$output = ob_get_contents();
+		$dropbox = 'C:\Users\WreckeD\Dropbox\Public\coding\wc3';
+		file_put_contents($dropbox.'\wc3parser_newest.html', $output);
+		copy($dropbox.'\wc3parser_newest.html', $dropbox.'\wc3parser_' . $id . '_' . $hash . '.html');
+		ob_end_flush();
+	}
+?>
